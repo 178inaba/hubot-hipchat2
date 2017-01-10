@@ -1,6 +1,6 @@
 {
-  "name": "hubot-hipchat",
-  "version": "2.12.0-6",
+  "name": "hubot-hipchat2",
+  "version": "1.0.0",
   "author": "HipChat <support@hipchat.com>",
   "description": "A HipChat adapter for Hubot",
   "keywords": [
@@ -12,7 +12,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "http://github.com/hipchat/hubot-hipchat.git"
+    "url": "https://github.com/hubot-hipchat2/hubot-hipchat2.git"
   },
   "license": "MIT",
   "main": "./src/hipchat",

@@ -1,4 +1,4 @@
-# hubot-hipchat
+# hubot-hipchat2
 
 ## Quickstart: Hubot for HipChat on Heroku
 
@@ -28,9 +28,9 @@ This is a HipChat-specific version of the more general [instructions in the Hubo
 
         % mkdir myhubot
         % cd myhubot
-        % yo hubot --adapter hipchat
+        % yo hubot --adapter hipchat2
 
-1. At this point, you'll be asked a few questions about the bot you are creating. When you finish answering, yeoman will download and install the necessary dependencies. (If the generator hangs, a workaround is to re-run without the `--adapter hipchat` argument, accept the default `campfire` value when prompted, and then re-run yet again, again with the hipchat adapter argument, accepting the prompts to overwrite existing files. This appears to be an issue with the generator itself.)
+1. At this point, you'll be asked a few questions about the bot you are creating. When you finish answering, yeoman will download and install the necessary dependencies. (If the generator hangs, a workaround is to re-run without the `--adapter hipchat2` argument, accept the default `campfire` value when prompted, and then re-run yet again, again with the hipchat adapter argument, accepting the prompts to overwrite existing files. This appears to be an issue with the generator itself.)
 
 1. Turn your `hubot` directory into a git repository:
 
@@ -144,6 +144,6 @@ To run locally on OSX or Linux you'll need to set the required environment varia
     export HUBOT_HIPCHAT_JID="..."
     export HUBOT_HIPCHAT_PASSWORD="..."
 
-    bin/hubot --adapter hipchat
+    bin/hubot --adapter hipchat2
 
 But be aware that credentials normally shouldn't be checked into your vcs.

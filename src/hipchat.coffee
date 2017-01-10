@@ -9,6 +9,7 @@ class HipChat extends Adapter
   constructor: (robot) ->
     super robot
     @logger = robot.logger
+    @rooms = {}
     reconnectTimer = null
 
   emote: (envelope, strings...) ->
@@ -18,16 +19,7 @@ class HipChat extends Adapter
     {user, room} = envelope
     user = envelope if not user # pre-2.4.2 style
 
-    target_jid =
-      # most common case - we're replying to a user in a room or 1-1
-      user?.reply_to or
-      # allows user objects to be passed in
-      user?.jid or
-      if user?.search?(/@/) >= 0
-        user # allows user to be a jid string
-      else
-        room # this will happen if someone uses robot.messageRoom(jid, ...)
-
+    target_jid = @targetJid user, room
     if not target_jid
       return @logger.error "ERROR: Not sure who to send to: envelope=#{inspect envelope}"
 
@@ -38,16 +30,7 @@ class HipChat extends Adapter
     {user, room} = envelope
     user = envelope if not user # pre-2.4.2 style
 
-    target_jid =
-      # most common case - we're replying to a user in a room or 1-1
-      user?.reply_to or
-      # allows user objects to be passed in
-      user?.jid or
-      if user?.search?(/@/) >= 0
-        user # allows user to be a jid string
-      else
-        room # this will happen if someone uses robot.messageRoom(jid, ...)
-
+    target_jid = @targetJid user, room
     if not target_jid
       return @logger.error "ERROR: Not sure who to send to: envelope=#{inspect envelope}"
 
@@ -105,7 +88,7 @@ class HipChat extends Adapter
     connector.onTopic (channel, from, message) =>
       @logger.info "Topic change: " + message
       author = getAuthor: => @robot.brain.userForName(from) or new User(from)
-      author.room = @roomNameFromJid(channel)
+      author.room = @rooms[channel].name
       @receive new TopicMessage(author, message, 'id')
 
 
@@ -146,6 +129,17 @@ class HipChat extends Adapter
             delete @robot.brain.data.users[user.id]
           @robot.brain.userForId user.id, user
 
+      setRooms = (callback) =>
+        connector.getRooms (err, rooms, stanza) =>
+          if rooms
+            for room in rooms
+              @rooms[room.jid] = room
+          else
+            return @logger.error "Can't list rooms: #{errmsg err}"
+
+          if callback?
+            callback()
+
       joinRoom = (jid) =>
         if jid and typeof jid is "object"
           jid = "#{jid.local}@#{jid.domain}"
@@ -165,26 +159,34 @@ class HipChat extends Adapter
       init
         .done (users) =>
           saveUsers(users)
-          # Join requested rooms
-          if @options.rooms is "All" or @options.rooms is "@All"
-            connector.getRooms (err, rooms, stanza) =>
-              if rooms
-                for room in rooms
-                  if !@options.rooms_join_public && room.guest_url != ''
-                    @logger.info "Not joining #{room.jid} because it is a public room"
-                  else
-                    joinRoom(room.jid)
-              else
-                @logger.error "Can't list rooms: #{errmsg err}"
-          # Join all rooms
-          else
-            for room_jid in @options.rooms.split ","
-              joinRoom(room_jid)
+
+          setRooms =>
+            # Join requested rooms
+            if @options.rooms is "All" or @options.rooms is "@All"
+              for _, room of @rooms
+                if !@options.rooms_join_public && room.guest_url != ''
+                  @logger.info "Not joining #{room.jid} because it is a public room"
+                else
+                  joinRoom room.jid
+            # Join all rooms
+            else
+              for room_jid in @options.rooms.split ","
+                joinRoom room_jid
+
         .fail (err) =>
           @logger.error "Can't list users: #{errmsg err}" if err
 
       connector.onRosterChange (users) =>
         saveUsers(users)
+
+      connector.onRoomPushes (room) =>
+        if @options.rooms is "All" or @options.rooms is "@All"
+          if !@rooms[room.jid]
+            joinRoom room.jid
+          @rooms[room.jid] = room
+
+      connector.onRoomDeleted (jid) =>
+        delete @rooms[jid]
 
       handleMessage = (opts) =>
         # buffer message events until the roster fetch completes
@@ -207,7 +209,7 @@ class HipChat extends Adapter
             getAuthor: => @robot.brain.userForName(from) or new User(from)
             message: message
             reply_to: channel
-            room: @roomNameFromJid(channel)
+            room: @rooms[channel].name
 
         connector.onPrivateMessage (from, message) =>
           # remove leading @mention name if present and format the message like
@@ -241,6 +243,8 @@ class HipChat extends Adapter
           action = if @options.autojoin then "joining" else "ignoring"
           @logger.info "Got invite to #{room_jid} from #{from_jid} - #{action}"
           joinRoom(room_jid) if @options.autojoin
+          connector.getRoom room_jid, (err, room) =>
+            @rooms[room.jid] = room
 
       firstTime = false
     connector.connect()
@@ -253,11 +257,22 @@ class HipChat extends Adapter
     catch e
       @logger.error "Bad user JID: #{jid}"
 
-  roomNameFromJid: (jid) ->
-    try
-      jid.match(/^\d+_(.+)@conf\./)[1]
-    catch e
-      @logger.error "Bad room JID: #{jid}"
+  roomJidFromName: (name) ->
+    for _, room of @rooms
+      if room.name == name
+        return room.jid
+
+  targetJid: (user, room) ->
+    # most common case - we're replying to a user in a room or 1-1
+    user?.reply_to or
+    # allows user objects to be passed in
+    user?.jid or
+    if user?.search?(/@/) >= 0
+      user # allows user to be a jid string
+    else
+      @robot.brain.userForName(room)?.jid or
+      @roomJidFromName room or
+      room # this will happen if someone uses robot.messageRoom(jid, ...)
 
   # Convenience HTTP Methods for posting on behalf of the token'd user
   get: (path, callback) ->

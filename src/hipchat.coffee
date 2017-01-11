@@ -271,7 +271,7 @@ class HipChat extends Adapter
       user # allows user to be a jid string
     else
       @robot.brain.userForName(room)?.jid or
-      @roomJidFromName room or
+      @roomJidFromName(room) or
       room # this will happen if someone uses robot.messageRoom(jid, ...)
 
   # Convenience HTTP Methods for posting on behalf of the token'd user

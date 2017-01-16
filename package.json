@@ -1,6 +1,6 @@
 {
   "name": "hubot-hipchat2",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "author": "HipChat <support@hipchat.com>",
   "description": "A HipChat adapter for Hubot",
   "keywords": [
